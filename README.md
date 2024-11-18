@@ -1,7 +1,7 @@
 # suiyunonghen/datetime
 datetime type of moonbit
 # Design rules
-Take 1899-12-30 0:0:0.0 as the zero time
+Take 1899-12-30 0:0:0.0 as the zero time  
 DateTime is a double type, where the integer part represents the number of days from 1899-12-30 to time, and the decimal part represents the percentage of milliseconds in the current day's time 
 (milliseconds from 0:00 to the current time/total milliseconds in the day)
 # usage
@@ -32,4 +32,5 @@ You can use methods such as decode_date, decode_time, and decode to decode the y
 let date1 = new(2024, 11, 18, 18, 23, 43, 199).unwrap()
 let date = date1.decode_date()
 let week=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
+println("\{date.year}-\{date.month}-\{date.day} \{week[date.dayofweek-1]}")
 ```
