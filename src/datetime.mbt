@@ -1,0 +1,447 @@
+///! 日期时间类型,1899-12-30 00:00:00作为0时间
+/// 日期规则为到1899-12-30号的天数+当前的毫秒数/一天的总共毫秒数集合
+pub(all) type DateTime Double
+
+pub(all) struct SystemDate {
+  dayofweek : Int
+  year : Int
+  month : Int
+  day : Int
+}
+
+pub fn inc_month(self : SystemDate, numMonth : Int) -> (SystemDate, Array[Int]) {
+  let sign = if numMonth >= 0 { 1 } else { -1 }
+  let mut year = self.year + numMonth / 12
+  let numMonth = numMonth % 12
+  let mut month = self.month + numMonth
+  if ((month - 1) & 0xFFFF) > 11 {
+    year += sign
+    month = month - 12 * sign
+  }
+  let dayTable = if is_leap_year(year) {
+    monthDayTables1
+  } else {
+    monthDayTables0
+  }
+  if self.day > dayTable[month - 1] {
+    ({ year, month, day: dayTable[month - 1], dayofweek: 0 }, dayTable)
+  } else {
+    ({ year, month, day: self.day, dayofweek: 0 }, dayTable)
+  }
+}
+
+pub impl Show for SystemDate with output(self, l : Logger) -> Unit {
+  l.write_string("\{self.year}-\{self.month}-\{self.day}")
+}
+
+pub(all) struct SystemTime {
+  hour : Int
+  minute : Int
+  second : Int
+  milliseconds : Int
+}
+
+pub impl Show for SystemTime with output(self, l : Logger) -> Unit {
+  l.write_string(
+    "\{self.hour}:\{self.minute}:\{self.second}.\{self.milliseconds}",
+  )
+}
+
+pub(all) struct SystemDateTime {
+  date : SystemDate
+  time : SystemTime
+}
+
+pub impl Show for SystemDateTime with output(self, l : Logger) -> Unit {
+  l.write_string(
+    "\{self.date.year}-\{self.date.month}-\{self.date.day} \{self.time.hour}:\{self.time.minute}:\{self.time.second}.\{self.time.milliseconds}",
+  )
+}
+
+const MSecondsPerMinute = 60_000
+
+const MSecondsPerDay : Int64 = 86400_000
+
+const UnixDateDeltaDays = 25569 //1899-12-30到1970-1-1天数
+
+const DateDelta = 693594 //0000-1-1到1899-12-30天数
+
+const ApproxDaysPerYear = 365.2425
+
+const ApproxDaysPerMonth = 30.436875
+
+const MSecondsPerYear : Int64 = 31_556_952_000 //365.2425*86400_000
+
+const MSecondsPerMonth : Int64 = 2_629_746_000 //30.436875*86400_000
+
+priv struct TimeStamp {
+  mut time : Int //剩下的毫秒
+  mut date : Int //到0001-1-1的天数
+}
+
+fn mseconds(self : TimeStamp) -> Int64 {
+  self.date.to_int64() * MSecondsPerDay + self.time.to_int64()
+}
+
+fn addmseconds(self : TimeStamp, mseconds : Int64) -> Unit {
+  let curms = self.date.to_int64() * MSecondsPerDay +
+    self.time.to_int64() +
+    mseconds
+  self.date = (curms / MSecondsPerDay).to_int()
+  self.time = (curms % MSecondsPerDay).to_int()
+}
+
+fn datetime(self : TimeStamp) -> DateTime {
+  ((self.date - DateDelta).to_int64() * MSecondsPerDay + self.time.to_int64()).to_double() /
+  MSecondsPerDay.to_double()
+}
+
+fn timestamp(self : DateTime) -> TimeStamp {
+  let date = self._.to_int()
+  {
+    date: date + DateDelta,
+    time: ((self._ - date.to_double()) * MSecondsPerDay.to_double()).to_int(),
+  }
+}
+
+pub fn inc_milliseconds(self : DateTime, milliseconds : Int64) -> DateTime {
+  let ts = self.timestamp()
+  ts.addmseconds(milliseconds)
+  ts.datetime()
+}
+
+pub fn inc_seconds(self : DateTime, seconds : Int64) -> DateTime {
+  self.inc_milliseconds(seconds * 1000)
+}
+
+pub fn inc_minutes(self : DateTime, minutes : Int64) -> DateTime {
+  self.inc_milliseconds(minutes * 60_000)
+}
+
+pub fn inc_hour(self : DateTime, hour : Int64) -> DateTime {
+  self.inc_milliseconds(hour * 3600_000)
+}
+
+pub fn milliseconds(self : DateTime) -> Int64 {
+  self.timestamp().mseconds()
+}
+
+pub fn is_leap_year(year : Int) -> Bool {
+  year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
+}
+
+const D1 = 365
+
+const D4 = 1461 //D1 * 4 + 1;
+
+const D100 = 36524 //D4 * 25 - 1;
+
+const D400 = 146097 //D100 * 4 + 1;
+
+let monthDayTables0 : Array[Int] = [
+  31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
+]
+
+let monthDayTables1 : Array[Int] = [
+  31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
+]
+
+pub impl Show for DateTime with output(self, l : Logger) -> Unit {
+  if self._ < 1 && self._ != 0 {
+    let time = self.decode_time()
+    l.write_string(
+      "\{time.hour}:\{time.minute}:\{time.second}.\{time.milliseconds}",
+    )
+  } else {
+    let date = self.decode_date()
+    let time = self.decode_time()
+    l.write_string(
+      "\{date.year}-\{date.month}-\{date.day} \{time.hour}:\{time.minute}:\{time.second}.\{time.milliseconds}",
+    )
+  }
+}
+
+pub fn decode_date(self : DateTime) -> SystemDate {
+  let mut date = self._.to_int() + DateDelta
+  if date < 0 {
+    { year: 0, month: 0, day: 0, dayofweek: 0 }
+  } else {
+    let dow = date % 7 + 1
+    date -= 1
+    let mut year = 1
+    while date >= D400 {
+      date -= D400
+      year += 400
+    }
+    let mut i = date / D100
+    let mut d = date % D100
+    if i == 4 {
+      i -= 1
+      d += D100
+    }
+    year += i * 100
+    i = d / D4
+    d = d % D4
+    year += i * 4
+    i = d / D1
+    d = d % D1
+    if i == 4 {
+      i -= 1
+      d += D1
+    }
+    year += i
+    let dayTable = if is_leap_year(year) {
+      monthDayTables1
+    } else {
+      monthDayTables0
+    }
+    let mut m = 0
+    while true {
+      i = dayTable[m]
+      if d < i {
+        break
+      }
+      d -= i
+      m += 1
+    }
+    { year, month: m + 1, day: d + 1, dayofweek: dow - 1 }
+  }
+}
+
+pub fn decode_time(self : DateTime) -> SystemTime {
+  let time = ((self._ - self._.to_int().to_double()) *
+  MSecondsPerDay.to_double()).to_int()
+  let minCount = time / MSecondsPerMinute
+  let msecCount = time % MSecondsPerMinute
+  {
+    hour: minCount / 60,
+    minute: minCount % 60,
+    second: msecCount / 1000,
+    milliseconds: msecCount % 1000,
+  }
+}
+
+pub fn decode(self : DateTime) -> SystemDateTime {
+  { date: self.decode_date(), time: self.decode_time() }
+}
+
+pub fn DateTime::from_unix_seconds(seconds : Int64) -> DateTime {
+  DateTime(UnixDateDeltaDays.to_double()).inc_milliseconds(seconds * 1000)
+}
+
+pub fn DateTime::from_unix_mseconds(seconds : Int64) -> DateTime {
+  DateTime(UnixDateDeltaDays.to_double()).inc_milliseconds(seconds)
+}
+
+pub fn DateTime::new_date(year : Int, month : Int, day : Int) -> DateTime? {
+  let dayTable = if is_leap_year(year) {
+    monthDayTables1
+  } else {
+    monthDayTables0
+  }
+  if year >= 1 &&
+    year <= 9999 &&
+    month >= 1 &&
+    month <= 12 &&
+    day >= 1 &&
+    day <= dayTable[month - 1] {
+    let mut day = day
+    for i in 0..<(month - 1) {
+      day += dayTable[i]
+    }
+    let i = year - 1
+    Some(
+      DateTime(
+        (i * 365 + i / 4 - i / 100 + i / 400 + day - DateDelta).to_double(),
+      ),
+    )
+  } else {
+    None
+  }
+}
+
+pub fn DateTime::new_time(
+  hour : Int,
+  minute : Int,
+  seconds : Int,
+  milliseconds : Int
+) -> DateTime? {
+  if hour < 24 && minute < 60 && seconds < 60 && milliseconds < 1000 {
+    Some(
+      (hour * 3600_000 + minute * 60_000 + seconds * 1000 + milliseconds).to_double() /
+      MSecondsPerDay.to_double(),
+    )
+  } else {
+    None
+  }
+}
+
+pub fn DateTime::new(
+  year : Int,
+  month : Int,
+  day : Int,
+  hour : Int,
+  minute : Int,
+  seconds : Int,
+  milliseconds : Int
+) -> DateTime? {
+  let dayTable = if is_leap_year(year) {
+    monthDayTables1
+  } else {
+    monthDayTables0
+  }
+  if year >= 1 &&
+    year <= 9999 &&
+    month >= 1 &&
+    month <= 12 &&
+    day >= 1 &&
+    day <= dayTable[month - 1] &&
+    hour < 24 &&
+    minute < 60 &&
+    seconds < 60 &&
+    milliseconds < 1000 {
+    let mut day = day
+    for i in 0..<(month - 1) {
+      day += dayTable[i]
+    }
+    let i = year - 1
+    let dayms_percent = (hour * 3600_000 +
+      minute * 60_000 +
+      seconds * 1000 +
+      milliseconds).to_double() /
+      MSecondsPerDay.to_double()
+    Some(
+      (i * 365 + i / 4 - i / 100 + i / 400 + day - DateDelta).to_double() +
+      dayms_percent,
+    )
+  } else {
+    None
+  }
+}
+
+//difference in days
+pub fn op_sub(self : DateTime, other : DateTime) -> Double {
+  self._ - other._
+}
+
+//number of days between time intervals
+pub fn day_span(self : DateTime, then : DateTime) -> Double {
+  if self._ < then._ {
+    then._ - self._
+  } else {
+    self._ - then._
+  }
+}
+
+pub fn year_span(self : DateTime, then : DateTime) -> Double {
+  self.day_span(then) / ApproxDaysPerYear
+}
+
+pub fn month_span(self : DateTime, then : DateTime) -> Double {
+  self.day_span(then) / ApproxDaysPerMonth
+}
+
+pub fn week_span(self : DateTime, then : DateTime) -> Double {
+  self.day_span(then) / 7
+}
+
+pub fn hours_between(self : DateTime, then : DateTime) -> Int64 {
+  let delta = self.milliseconds() - then.milliseconds()
+  if delta < 0 {
+    -delta / 3600_000
+  } else {
+    delta / 3600_000
+  }
+}
+
+pub fn minutes_between(self : DateTime, then : DateTime) -> Int64 {
+  let delta = self.milliseconds() - then.milliseconds()
+  if delta < 0 {
+    -delta / delta / 60_000
+  } else {
+    delta / 60_000
+  }
+}
+
+pub fn seconds_between(self : DateTime, then : DateTime) -> Int64 {
+  let delta = self.milliseconds() - then.milliseconds()
+  if delta < 0 {
+    -delta / 1000
+  } else {
+    delta / 1000
+  }
+}
+
+pub fn milliseconds_between(self : DateTime, then : DateTime) -> Int64 {
+  let delta = self.milliseconds() - then.milliseconds()
+  if delta < 0 {
+    -delta
+  } else {
+    delta
+  }
+}
+
+pub fn years_between(self : DateTime, then : DateTime) -> Int {
+  let delta = self.milliseconds() - then.milliseconds()
+  if delta < 0 {
+    (-delta / MSecondsPerYear).to_int()
+  } else {
+    (delta / MSecondsPerYear).to_int()
+  }
+}
+
+pub fn months_between(self : DateTime, then : DateTime) -> Int {
+  let delta = self.milliseconds() - then.milliseconds()
+  if delta < 0 {
+    (-delta / MSecondsPerMonth).to_int()
+  } else {
+    (delta / MSecondsPerMonth).to_int()
+  }
+}
+
+pub fn days_between(self : DateTime, then : DateTime) -> Int {
+  let delta = self.milliseconds() - then.milliseconds()
+  if delta < 0 {
+    (-delta / MSecondsPerDay).to_int()
+  } else {
+    (delta / MSecondsPerDay).to_int()
+  }
+}
+
+pub fn inc_month(self : DateTime, monthNum : Int) -> DateTime {
+  let date = self.decode_date()
+  let time = self._ - self._.to_int().to_double()
+  let (date, dayTable) = date.inc_month(monthNum)
+  let mut day = date.day
+  for i in 0..<(date.month - 1) {
+    day += dayTable[i]
+  }
+  let i = date.year - 1
+  (i * 365 + i / 4 - i / 100 + i / 400 + day - DateDelta).to_double() + time
+}
+
+pub fn inc_year(self : DateTime, yearNum : Int) -> DateTime {
+  self.inc_month(yearNum * 12)
+}
+
+pub fn inc_day(self : DateTime, days : Int) -> DateTime {
+  self.inc_milliseconds(MSecondsPerDay * days.to_int64())
+}
+
+test "new datetime" {
+  let t = DateTime(0)
+  println(t)
+  let date1 = new(2024, 11, 18, 18, 23, 43, 199).unwrap()
+  let date = date1.decode_date()
+  let week = [
+    "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
+  ]
+  println("\{date.year}-\{date.month}-\{date.day} \{week[date.dayofweek-1]}")
+  let time = date1.decode_time()
+  println("\{time.hour}:\{time.minute}:\{time.second}.\{time.milliseconds}")
+  assert_eq!(Show::to_string(date1), "2024-11-18 18:23:43.199")
+  assert_eq!(Show::to_string(date1.inc_month(-13)), "2023-10-18 18:23:43.199")
+  assert_eq!(Show::to_string(date1.inc_hour(24)), "2024-11-19 18:23:43.199")
+  let date2 = from_unix_seconds(1731934794)
+  assert_eq!(Show::to_string(date2), "2024-11-18 12:59:54.0")
+}
