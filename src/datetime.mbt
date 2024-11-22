@@ -79,7 +79,7 @@ priv struct TimeStamp {
   mut date : Int //到0001-1-1的天数
 }
 
-fn mseconds(self : TimeStamp) -> Int64 {
+fn mseconds(self : TimeStamp) -> Int64 {  
   self.date.to_int64() * MSecondsPerDay + self.time.to_int64()
 }
 
@@ -124,6 +124,14 @@ pub fn inc_hour(self : DateTime, hour : Int64) -> DateTime {
 
 pub fn milliseconds(self : DateTime) -> Int64 {
   self.timestamp().mseconds()
+}
+
+pub fn unix_millseconds(self: DateTime)->Int64{
+  ((self._ - UnixDateDeltaDays.to_double()) * MSecondsPerDay.to_double()).to_int64()
+}
+
+pub fn unix_seconds(self: DateTime)->Int64{
+  ((self._ - UnixDateDeltaDays.to_double()) * 86400).to_int64()
 }
 
 pub fn is_leap_year(year : Int) -> Bool {
@@ -428,6 +436,15 @@ pub fn inc_day(self : DateTime, days : Int) -> DateTime {
   self.inc_milliseconds(MSecondsPerDay * days.to_int64())
 }
 
+pub fn parse_datetime(str : String) -> DateTime!@strconv.StrConvError {
+  raise @strconv.StrConvError("Not implemented")
+}
+
+pub impl @strconv.FromStr for DateTime with from_string(str) {
+  parse_datetime!(str)
+}
+
+
 test "new datetime" {
   let t = DateTime(0)
   println(t)
@@ -444,4 +461,5 @@ test "new datetime" {
   assert_eq!(Show::to_string(date1.inc_hour(24)), "2024-11-19 18:23:43.199")
   let date2 = from_unix_seconds(1731934794)
   assert_eq!(Show::to_string(date2), "2024-11-18 12:59:54.0")
+  println(date2.unix_seconds())  
 }
