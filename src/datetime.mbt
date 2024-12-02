@@ -79,7 +79,7 @@ priv struct TimeStamp {
   mut date : Int //到0001-1-1的天数
 }
 
-fn mseconds(self : TimeStamp) -> Int64 {  
+fn mseconds(self : TimeStamp) -> Int64 {
   self.date.to_int64() * MSecondsPerDay + self.time.to_int64()
 }
 
@@ -126,11 +126,11 @@ pub fn milliseconds(self : DateTime) -> Int64 {
   self.timestamp().mseconds()
 }
 
-pub fn unix_millseconds(self: DateTime)->Int64{
+pub fn unix_millseconds(self : DateTime) -> Int64 {
   ((self._ - UnixDateDeltaDays.to_double()) * MSecondsPerDay.to_double()).to_int64()
 }
 
-pub fn unix_seconds(self: DateTime)->Int64{
+pub fn unix_seconds(self : DateTime) -> Int64 {
   ((self._ - UnixDateDeltaDays.to_double()) * 86400).to_int64()
 }
 
@@ -364,11 +364,8 @@ pub fn hours_between(self : DateTime, then : DateTime) -> Int64 {
 
 pub fn minutes_between(self : DateTime, then : DateTime) -> Int64 {
   let delta = self.milliseconds() - then.milliseconds()
-  if delta < 0 {
-    -delta / delta / 60_000
-  } else {
-    delta / 60_000
-  }
+  let delta_abs = if delta < 0 { -delta } else { delta }
+  delta_abs / 60_000
 }
 
 pub fn seconds_between(self : DateTime, then : DateTime) -> Int64 {
@@ -444,7 +441,6 @@ pub impl @strconv.FromStr for DateTime with from_string(str) {
   parse_datetime!(str)
 }
 
-
 test "new datetime" {
   let t = DateTime(0)
   println(t)
@@ -461,5 +457,5 @@ test "new datetime" {
   assert_eq!(Show::to_string(date1.inc_hour(24)), "2024-11-19 18:23:43.199")
   let date2 = from_unix_seconds(1731934794)
   assert_eq!(Show::to_string(date2), "2024-11-18 12:59:54.0")
-  println(date2.unix_seconds())  
+  println(date2.unix_seconds())
 }
