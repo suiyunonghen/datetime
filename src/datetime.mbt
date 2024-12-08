@@ -9,6 +9,10 @@ pub(all) struct SystemDate {
   day : Int
 }
 
+pub fn to_datetime(self: SystemDate)->DateTime{
+  DateTime::new(self.year,self.month,self.day,0,0,0,0).unwrap()
+}
+
 pub fn inc_month(self : SystemDate, numMonth : Int) -> (SystemDate, Array[Int]) {
   let sign = if numMonth >= 0 { 1 } else { -1 }
   let mut year = self.year + numMonth / 12
@@ -41,6 +45,10 @@ pub(all) struct SystemTime {
   milliseconds : Int
 }
 
+pub fn to_datetime(self: SystemTime)->DateTime{
+  DateTime::new(0,0,0,self.hour,self.minute,self.second,self.milliseconds).unwrap()
+}
+
 pub impl Show for SystemTime with output(self, l : Logger) -> Unit {
   l.write_string(
     "\{self.hour}:\{self.minute}:\{self.second}.\{self.milliseconds}",
@@ -50,6 +58,10 @@ pub impl Show for SystemTime with output(self, l : Logger) -> Unit {
 pub(all) struct SystemDateTime {
   date : SystemDate
   time : SystemTime
+}
+
+pub fn to_datetime(self: SystemDateTime)->DateTime{
+  DateTime::new(self.date.year,self.date.month,self.date.day,self.time.hour,self.time.minute,self.time.second,self.time.milliseconds).unwrap()
 }
 
 pub impl Show for SystemDateTime with output(self, l : Logger) -> Unit {
@@ -429,16 +441,228 @@ pub fn inc_year(self : DateTime, yearNum : Int) -> DateTime {
   self.inc_month(yearNum * 12)
 }
 
-pub fn inc_day(self : DateTime, days : Int) -> DateTime {
+pub fn inc_day(self : DateTime, days : Int) -> DateTime {  
   self.inc_milliseconds(MSecondsPerDay * days.to_int64())
 }
 
+fn index_of_char(str: String,ch: Char, from~: Int=0)->Int{
+  let l = str.length()
+  for i in from..<l{
+    if str.get(i)==ch{
+      return i
+    }
+  }
+  -1
+}
+
+fn index_of_char_ex(str: String,f: (Char)->Bool,  from~: Int=0)->Int{
+  let l = str.length()
+  for i in from..<l{
+    if f(str.get(i)){
+      return i
+    }    
+  }
+  -1
+}
+
+///|
+/// datetime formats
+/// YYYY-MM-DD HH:MM:SS.zzz
+/// YYYY-MM-DDTHH:MM:SS.zzz
+/// YYYY-MM-DD
+/// YY-MM-DD
+/// HH:MM:SS.zzz
+/// HH:MM:SS
 pub fn parse_datetime(str : String) -> DateTime!@strconv.StrConvError {
-  raise @strconv.StrConvError("Not implemented")
+  let mut year=0
+  let mut month=0
+  let mut day=0  
+  let timeIndex = loop index_of_char(str,'-'),0,0{
+    index,seg_index,start=>{
+      match seg_index{
+        0=>{
+          if index <0{
+            break 0
+          }
+          //year
+          let l = index - start
+          if l != 2 && l!=4{
+            raise @strconv.StrConvError("invalid year syntax")
+          }
+          let year_str = str.substring(start~,end=index)
+          match @strconv.parse_int?(year_str){
+            Ok(y)=>{
+              year = {
+                if l==4{
+                  y
+                }else{
+                  y + 2000
+                }
+              }              
+            }
+            _=>raise @strconv.StrConvError("invalid year syntax")
+          }
+        }
+        1=>{
+          if index <0{
+            raise @strconv.StrConvError("invalid month syntax")
+          }
+          //month
+          let mut l = index - start
+          if l != 1 &&  l != 2{
+            raise @strconv.StrConvError("invalid month syntax")
+          }
+          let month_str = str.substring(start~,end=index)
+          match @strconv.parse_int?(month_str){
+            Ok(m)=>{
+              if m < 1  || m > 12{
+                raise @strconv.StrConvError("invalid month syntax")
+              }
+              month = m              
+            }
+            _=>raise @strconv.StrConvError("invalid month syntax")
+          }
+          let day_start = index + 1
+          //找day
+          let next=index_of_char_ex(str,fn(ch){
+            ch == ' ' || ch == 'T' || ch=='t'
+          },from=day_start)          
+          l ={
+            if next == -1{
+              //没有时间
+              str.length()-day_start
+            }else{
+              next - day_start
+            }
+          }                    
+          if l != 1 &&  l != 2{
+            raise @strconv.StrConvError("invalid day syntax")
+          }
+          let day_str = str.substring(start=day_start,end=day_start+l)
+          match @strconv.parse_int?(day_str){
+            Ok(d)=>{
+              if d < 1  || d > 31{
+                raise @strconv.StrConvError("invalid day syntax")
+              }
+              let dayTable = if is_leap_year(year) {
+                monthDayTables1
+              } else {
+                monthDayTables0
+              }
+              if d > dayTable[month-1]{
+                raise @strconv.StrConvError("invalid day syntax")
+              }
+              day = d
+              if next >= 0{
+                break next+1
+              }
+              break -1
+            }
+            _=>raise @strconv.StrConvError("invalid day syntax")
+          }          
+        }
+        _=>break 0
+      }
+      continue index_of_char(str,'-',from=index+1),seg_index+1,index+1
+    }    
+  }
+  if timeIndex == -1{
+    return DateTime::new(year,month,day,0,0,0, 0).unwrap()
+  }
+  let mut hour=0
+  let mut minute=0  
+  loop index_of_char(str,':',from=timeIndex),0,timeIndex{
+    index,seg_index,start=>{
+      match seg_index{
+        0=>{
+          //hour
+          if index <0{
+            raise @strconv.StrConvError("invalid hour syntax")
+          }          
+          let l = index - start
+          if l != 2 && l!=4{
+            raise @strconv.StrConvError("invalid hour syntax")
+          }
+          let hour_str = str.substring(start~,end=index)
+          match @strconv.parse_int?(hour_str){
+            Ok(h)=> {
+              if h > 23{
+                raise @strconv.StrConvError("invalid hour syntax")
+              }
+              hour=h
+            }
+            _=>raise @strconv.StrConvError("invalid hour syntax")
+          } 
+        }
+        1=>{
+          //minute
+          if index <0{
+            raise @strconv.StrConvError("invalid hour syntax")
+          }
+          let mut l = index - start
+          if l != 1 &&  l != 2{
+            raise @strconv.StrConvError("invalid hour syntax")
+          }
+          let minute_str = str.substring(start~,end=index)
+          match @strconv.parse_int?(minute_str){
+            Ok(m)=>{
+              if m < 0  || m > 59{
+                raise @strconv.StrConvError("invalid minute syntax")
+              }
+              minute = m              
+            }
+            _=>raise @strconv.StrConvError("invalid minute syntax")
+          }
+          let sec_start = index + 1
+          let next=index_of_char(str,'.',from=sec_start)          
+          l ={
+            if next == -1{              
+              str.length()-sec_start
+            }else{
+              next - sec_start
+            }
+          }
+          if l != 1 &&  l != 2{
+            raise @strconv.StrConvError("invalid seconds syntax")
+          }          
+          match @strconv.parse_int?(str.substring(start=sec_start,end=sec_start+l)){
+            Ok(sec)=>{
+              if sec > 59{
+                raise @strconv.StrConvError("invalid seconds syntax")
+              }              
+              if next != -1{                
+                l = str.length()-next-1
+                if l > 3{
+                  raise @strconv.StrConvError("invalid millseconds syntax")
+                }                
+                match @strconv.parse_int?(str.substring(start=next+1,end=str.length())){
+                  Ok(ms)=>{
+                    return DateTime::new(year,month,day,hour,minute,sec, ms).unwrap()
+                  }
+                  _=>raise @strconv.StrConvError("invalid millseconds syntax")
+                }
+              }
+              return DateTime::new(year,month,day,hour,minute,sec, 0).unwrap() 
+            }
+            _=>raise @strconv.StrConvError("invalid seconds syntax")
+          }
+        }        
+        _=>raise @strconv.StrConvError("invalid syntax")
+      }
+      continue index_of_char(str,':',from=index+1),seg_index+1,index+1 
+    }
+  }    
 }
 
 pub impl @strconv.FromStr for DateTime with from_string(str) {
   parse_datetime!(str)
+}
+
+test "parse datetime"{
+  match parse_datetime?("2024-12-03 12:32:33.981"){
+    Ok(v)=>println(v)
+    _=>()
+  }
 }
 
 test "new datetime" {

@@ -34,3 +34,12 @@ let date = date1.decode_date()
 let week=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
 println("\{date.year}-\{date.month}-\{date.day} \{week[date.dayofweek-1]}")
 ```
+
+# parse from string
+Implemented @strconv.FromStr trait
+```
+match parse_datetime?("2024-12-03 12:32:33.981"){
+    Ok(v)=>println(v)
+    _=>()
+}
+```
