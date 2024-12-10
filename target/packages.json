@@ -1,0 +1,37 @@
+{
+  "source_dir": "/Volumes/xunyoyo/PICT/datetime",
+  "name": "suiyunonghen/datetime",
+  "packages": [
+    {
+      "is-main": false,
+      "is-third-party": false,
+      "root-path": "/Volumes/xunyoyo/PICT/datetime/src",
+      "root": "suiyunonghen/datetime",
+      "rel": "",
+      "files": {
+        "/Volumes/xunyoyo/PICT/datetime/src/datetime.mbt": {
+          "backend": [
+            "Wasm",
+            "WasmGC",
+            "Js",
+            "Native"
+          ],
+          "optlevel": [
+            "Debug",
+            "Release"
+          ]
+        }
+      },
+      "wbtest-files": {},
+      "test-files": {},
+      "deps": [],
+      "wbtest-deps": [],
+      "test-deps": [],
+      "artifact": "/Volumes/xunyoyo/PICT/datetime/target/wasm-gc/release/check/datetime.mi"
+    }
+  ],
+  "deps": [],
+  "backend": "wasm-gc",
+  "opt_level": "release",
+  "source": "src"
+}
