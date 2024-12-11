@@ -2,6 +2,45 @@
 /// 日期规则为到1899-12-30号的天数+当前的毫秒数/一天的总共毫秒数集合
 pub(all) type DateTime Double
 
+pub(all) struct TimeZone {
+  offset_hours : Int
+  offset_minutes : Int
+}
+
+pub fn TimeZone::new_timezone(offset_hours : Int, offset_minutes : Int) -> TimeZone {
+  { offset_hours, offset_minutes }
+}
+
+pub fn TimeZone::offset_in_minutes(self : TimeZone) -> Int {
+  self.offset_hours * 60 + self.offset_minutes
+}
+
+pub fn DateTime::to_timezone(self: DateTime, timezone: TimeZone) -> DateTime {
+  let timezone_offset = timezone.offset_in_minutes() * 60_000
+  self.inc_milliseconds(timezone_offset.to_int64())
+}
+
+pub fn DateTime::from_timezone(self: DateTime, timezone: TimeZone) -> DateTime {
+  let timezone_offset = timezone.offset_in_minutes() * 60_000
+  self.inc_milliseconds(-timezone_offset.to_int64())
+}
+
+pub fn TimeZone::difference(self: TimeZone, other: TimeZone) -> Int {
+  self.offset_in_minutes() - other.offset_in_minutes()
+}
+
+//一些常量
+
+// let utc : TimeZone = TimeZone::new_timezone(0, 0)
+
+// let cst : TimeZone = TimeZone::new_timezone(8, 0) // 中国标准时间
+
+// let est : TimeZone = TimeZone::new_timezone(-5, 0) // 美国东部标准时间
+
+// let pst : TimeZone = TimeZone::new_timezone(-8, 0) // 美国太平洋标准时间
+
+// let ist : TimeZone = TimeZone::new_timezone(5, 30) // 印度标准时间
+
 pub(all) struct SystemDate {
   dayofweek : Int
   year : Int
