@@ -90,7 +90,7 @@ pub fn inc_month(self : SystemDate, numMonth : Int) -> (SystemDate, Array[Int]) 
 }
 
 ///|
-pub impl Show for SystemDate with output(self, l : Logger) -> Unit {
+pub impl Show for SystemDate with output(self, l : &Logger) -> Unit {
   l.write_string("\{self.year}-\{self.month}-\{self.day}")
 }
 
@@ -108,7 +108,7 @@ pub fn to_datetime(self : SystemTime) -> DateTime {
 }
 
 ///|
-pub impl Show for SystemTime with output(self, l : Logger) -> Unit {
+pub impl Show for SystemTime with output(self, l : &Logger) -> Unit {
   l.write_string(
     "\{self.hour}:\{self.minute}:\{self.second}.\{self.milliseconds}",
   )
@@ -134,7 +134,7 @@ pub fn to_datetime(self : SystemDateTime) -> DateTime {
 }
 
 ///|
-pub impl Show for SystemDateTime with output(self, l : Logger) -> Unit {
+pub impl Show for SystemDateTime with output(self, l : &Logger) -> Unit {
   l.write_string(
     "\{self.date.year}-\{self.date.month}-\{self.date.day} \{self.time.hour}:\{self.time.minute}:\{self.time.second}.\{self.time.milliseconds}",
   )
@@ -264,7 +264,7 @@ let monthDayTables1 : Array[Int] = [
 ]
 
 ///|
-pub impl Show for DateTime with output(self, l : Logger) -> Unit {
+pub impl Show for DateTime with output(self, l : &Logger) -> Unit {
   if self._ < 1 && self._ != 0 {
     let time = self.decode_time()
     l.write_string(
