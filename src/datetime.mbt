@@ -590,16 +590,21 @@ fn index_of_char_ex(str : String, f : (Char) -> Bool, from~ : Int = 0) -> Int {
 
 ///|
 /// datetime formats
-/// YYYY-MM-DD HH:MM:SS.zzz
-/// YYYY-MM-DDTHH:MM:SS.zzz
+/// YYYY-MM-DD HH:MM:SS.zzz(+hh:mm)
+/// YYYY-MM-DDTHH:MM:SS.zzz(-hh::mm)
 /// YYYY-MM-DD
 /// YY-MM-DD
-/// HH:MM:SS.zzz
-/// HH:MM:SS
+/// HH:MM:SS.zzz(+hh:mm)
+/// HH:MM:SS(-hh:mm)
 pub fn parse_datetime(str : String) -> DateTime!@strconv.StrConvError {
   let mut year = 0
   let mut month = 0
   let mut day = 0
+  let mut hour = 0
+  let mut minute = 0
+  let mut second = 0
+  let mut millisecond = 0
+  let mut timezone = TimeZone::new_timezone(0, 0) // 默认时区为 UTC
   let timeIndex = loop index_of_char(str, '-'), 0, 0 {
     index, seg_index, start => {
       match seg_index {
@@ -684,8 +689,6 @@ pub fn parse_datetime(str : String) -> DateTime!@strconv.StrConvError {
   if timeIndex == -1 {
     return DateTime::new(year, month, day, 0, 0, 0, 0).unwrap()
   }
-  let mut hour = 0
-  let mut minute = 0
   loop index_of_char(str, ':', from=timeIndex), 0, timeIndex {
     index, seg_index, start => {
       match seg_index {
@@ -746,6 +749,7 @@ pub fn parse_datetime(str : String) -> DateTime!@strconv.StrConvError {
               if sec > 59 {
                 raise @strconv.StrConvError("invalid seconds syntax")
               }
+              second = sec
               if next != -1 {
                 l = str.length() - next - 1
                 if l > 3 {
@@ -755,14 +759,10 @@ pub fn parse_datetime(str : String) -> DateTime!@strconv.StrConvError {
                   @strconv.parse_int?(
                     str.substring(start=next + 1, end=str.length()),
                   ) {
-                  Ok(ms) =>
-                    return DateTime::new(
-                      year, month, day, hour, minute, sec, ms,
-                    ).unwrap()
+                  Ok(ms) => millisecond = ms
                   _ => raise @strconv.StrConvError("invalid millseconds syntax")
                 }
               }
-              return DateTime::new(year, month, day, hour, minute, sec, 0).unwrap()
             }
             _ => raise @strconv.StrConvError("invalid seconds syntax")
           }
@@ -772,6 +772,39 @@ pub fn parse_datetime(str : String) -> DateTime!@strconv.StrConvError {
       continue index_of_char(str, ':', from=index + 1), seg_index + 1, index + 1
     }
   }
+
+  // 解析时区部分
+  let mut timezone_index = index_of_char(str, '+')
+  if timezone_index == -1 {
+    timezone_index = index_of_char(str, '-')
+  }
+  if timezone_index != -1 {
+    let sign = if str.get(timezone_index) == '+' { 1 } else { -1 }
+    let timezone_start = timezone_index + 1
+    let next = index_of_char(str, ':', from=timezone_start)
+    if next == -1 {
+      raise @strconv.StrConvError("invalid timezone syntax")
+    }
+    let offset_hours_str = str.substring(start=timezone_start, end=next)
+    let offset_minutes_str = str.substring(start=next + 1)
+    match @strconv.parse_int?(offset_hours_str) {
+      Ok(offset_hours) =>
+        match @strconv.parse_int?(offset_minutes_str) {
+          Ok(offset_minutes) => {
+            let offset_hours = offset_hours * sign
+            let offset_minutes = offset_minutes * sign
+            timezone = TimeZone::new_timezone(offset_hours, offset_minutes)
+          }
+          _ => raise @strconv.StrConvError("invalid timezone syntax")
+        }
+      _ => raise @strconv.StrConvError("invalid timezone syntax")
+    }
+  }
+  let datetime = DateTime::new(
+    year, month, day, hour, minute, second, millisecond,
+  ).unwrap()
+  let timezone_offset = timezone.offset_in_minutes() * 60_000
+  datetime.inc_milliseconds(-timezone_offset.to_int64())
 }
 
 ///|
@@ -780,7 +813,7 @@ pub impl @strconv.FromStr for DateTime with from_string(str) {
 }
 
 test "parse datetime" {
-  match parse_datetime?("2024-12-03 12:32:33.981") {
+  match parse_datetime?("2024-12-03 12:32:33.981+19:00") {
     Ok(v) => println(v)
     _ => ()
   }
