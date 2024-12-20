@@ -732,7 +732,14 @@ pub fn parse_datetime(str : String) -> DateTime!@strconv.StrConvError {
             _ => raise @strconv.StrConvError("invalid minute syntax")
           }
           let sec_start = index + 1
-          let next = index_of_char(str, '.', from=sec_start)
+          let mut next = index_of_char(str, '.', from=sec_start)
+          if next == -1{
+            next = index_of_char(str, '+', from=sec_start)
+            if next == -1{
+              next = index_of_char(str, '-', from=sec_start)
+            }
+            timezone_index = next
+          }
           l = if next == -1 {
             str.length() - sec_start
           } else {
@@ -750,6 +757,9 @@ pub fn parse_datetime(str : String) -> DateTime!@strconv.StrConvError {
                 raise @strconv.StrConvError("invalid seconds syntax")
               }
               second = sec
+              if timezone_index != -1{
+                break
+              }
               if next == -1 {
                 return DateTime::new(year, month, day, hour, minute, second, 0).unwrap()
               }
@@ -772,13 +782,13 @@ pub fn parse_datetime(str : String) -> DateTime!@strconv.StrConvError {
               }
               match
                 @strconv.parse_int?(str.substring(start=next + 1, end=ms_end)) {
-                Ok(ms) => {
-                  millisecond = ms
+                Ok(ms) => {                  
                   if timezone_index == -1 {
                     return DateTime::new(
-                      year, month, day, hour, minute, second, millisecond,
+                      year, month, day, hour, minute, second, ms,
                     ).unwrap()
                   }
+                  millisecond = ms
                   break
                 }
                 _ => raise @strconv.StrConvError("invalid millseconds syntax")
@@ -827,7 +837,7 @@ pub impl @strconv.FromStr for DateTime with from_string(str) {
 }
 
 test "parse datetime" {
-  match parse_datetime?("2024-12-03 12:32:33.981+19:00") {
+  match parse_datetime?("2024-12-03 12:32:33.33+19:00") {
     Ok(v) => println(v)
     _ => println("err")
   }
