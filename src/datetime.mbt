@@ -68,7 +68,10 @@ pub fn SystemDate::to_datetime(self : SystemDate) -> DateTime {
 }
 
 ///|
-pub fn SystemDate::inc_month(self : SystemDate, numMonth : Int) -> (SystemDate, Array[Int]) {
+pub fn SystemDate::inc_month(
+  self : SystemDate,
+  numMonth : Int
+) -> (SystemDate, Array[Int]) {
   let sign = if numMonth >= 0 { 1 } else { -1 }
   let mut year = self.year + numMonth / 12
   let numMonth = numMonth % 12
@@ -200,7 +203,10 @@ fn DateTime::timestamp(self : DateTime) -> TimeStamp {
 }
 
 ///|
-pub fn DateTime::inc_milliseconds(self : DateTime, milliseconds : Int64) -> DateTime {
+pub fn DateTime::inc_milliseconds(
+  self : DateTime,
+  milliseconds : Int64
+) -> DateTime {
   let ts = self.timestamp()
   ts.addmseconds(milliseconds)
   ts.datetime()
@@ -447,7 +453,7 @@ pub fn DateTime::new(
 
 //difference in days
 ///|
-pub impl Sub for DateTime with  op_sub(self : DateTime, other : DateTime) -> DateTime {
+pub impl Sub for DateTime with op_sub(self : DateTime, other : DateTime) -> DateTime {
   self._ - other._
 }
 
@@ -504,7 +510,10 @@ pub fn DateTime::seconds_between(self : DateTime, then : DateTime) -> Int64 {
 }
 
 ///|
-pub fn DateTime::milliseconds_between(self : DateTime, then : DateTime) -> Int64 {
+pub fn DateTime::milliseconds_between(
+  self : DateTime,
+  then : DateTime
+) -> Int64 {
   let delta = self.milliseconds() - then.milliseconds()
   if delta < 0 {
     -delta
@@ -568,12 +577,12 @@ pub fn DateTime::inc_day(self : DateTime, days : Int) -> DateTime {
 
 ///|
 fn index_of_char(str : String, ch : Int, from~ : Int = 0) -> Int {
-  let l = str.length()  
-  for i in from..<l {    
+  let l = str.length()
+  for i in from..<l {
     if str.charcode_at(i) == ch {
       return i
     }
-  }  
+  }
   -1
 }
 
@@ -733,9 +742,9 @@ pub fn DateTime::parse_datetime(str : String) -> DateTime!@strconv.StrConvError 
           }
           let sec_start = index + 1
           let mut next = index_of_char(str, '.', from=sec_start)
-          if next == -1{
+          if next == -1 {
             next = index_of_char(str, '+', from=sec_start)
-            if next == -1{
+            if next == -1 {
               next = index_of_char(str, '-', from=sec_start)
             }
             timezone_index = next
@@ -757,7 +766,7 @@ pub fn DateTime::parse_datetime(str : String) -> DateTime!@strconv.StrConvError 
                 raise @strconv.StrConvError("invalid seconds syntax")
               }
               second = sec
-              if timezone_index != -1{
+              if timezone_index != -1 {
                 break
               }
               if next == -1 {
@@ -782,7 +791,7 @@ pub fn DateTime::parse_datetime(str : String) -> DateTime!@strconv.StrConvError 
               }
               match
                 @strconv.parse_int?(str.substring(start=next + 1, end=ms_end)) {
-                Ok(ms) => {                  
+                Ok(ms) => {
                   if timezone_index == -1 {
                     return DateTime::new(
                       year, month, day, hour, minute, second, ms,
@@ -836,6 +845,7 @@ pub impl @strconv.FromStr for DateTime with from_string(str) {
   DateTime::parse_datetime!(str)
 }
 
+///|
 test "parse datetime" {
   match DateTime::parse_datetime?("2024-12-03 12:32:33.33+19:00") {
     Ok(v) => println(v)
@@ -843,6 +853,7 @@ test "parse datetime" {
   }
 }
 
+///|
 test "new datetime" {
   let t = DateTime(0)
   println(t)
