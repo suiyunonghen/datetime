@@ -63,12 +63,12 @@ pub(all) struct SystemDate {
 }
 
 ///|
-pub fn to_datetime(self : SystemDate) -> DateTime {
+pub fn SystemDate::to_datetime(self : SystemDate) -> DateTime {
   DateTime::new(self.year, self.month, self.day, 0, 0, 0, 0).unwrap()
 }
 
 ///|
-pub fn inc_month(self : SystemDate, numMonth : Int) -> (SystemDate, Array[Int]) {
+pub fn SystemDate::inc_month(self : SystemDate, numMonth : Int) -> (SystemDate, Array[Int]) {
   let sign = if numMonth >= 0 { 1 } else { -1 }
   let mut year = self.year + numMonth / 12
   let numMonth = numMonth % 12
@@ -103,7 +103,7 @@ pub(all) struct SystemTime {
 }
 
 ///|
-pub fn to_datetime(self : SystemTime) -> DateTime {
+pub fn SystemTime::to_datetime(self : SystemTime) -> DateTime {
   DateTime::new(0, 0, 0, self.hour, self.minute, self.second, self.milliseconds).unwrap()
 }
 
@@ -121,7 +121,7 @@ pub(all) struct SystemDateTime {
 }
 
 ///|
-pub fn to_datetime(self : SystemDateTime) -> DateTime {
+pub fn SystemDateTime::to_datetime(self : SystemDateTime) -> DateTime {
   DateTime::new(
     self.date.year,
     self.date.month,
@@ -171,12 +171,12 @@ priv struct TimeStamp {
 }
 
 ///|
-fn mseconds(self : TimeStamp) -> Int64 {
+fn TimeStamp::mseconds(self : TimeStamp) -> Int64 {
   self.date.to_int64() * MSecondsPerDay + self.time.to_int64()
 }
 
 ///|
-fn addmseconds(self : TimeStamp, mseconds : Int64) -> Unit {
+fn TimeStamp::addmseconds(self : TimeStamp, mseconds : Int64) -> Unit {
   let curms = self.date.to_int64() * MSecondsPerDay +
     self.time.to_int64() +
     mseconds
@@ -185,13 +185,13 @@ fn addmseconds(self : TimeStamp, mseconds : Int64) -> Unit {
 }
 
 ///|
-fn datetime(self : TimeStamp) -> DateTime {
+fn TimeStamp::datetime(self : TimeStamp) -> DateTime {
   ((self.date - DateDelta).to_int64() * MSecondsPerDay + self.time.to_int64()).to_double() /
   MSecondsPerDay.to_double()
 }
 
 ///|
-fn timestamp(self : DateTime) -> TimeStamp {
+fn DateTime::timestamp(self : DateTime) -> TimeStamp {
   let date = self._.to_int()
   {
     date: date + DateDelta,
@@ -200,39 +200,39 @@ fn timestamp(self : DateTime) -> TimeStamp {
 }
 
 ///|
-pub fn inc_milliseconds(self : DateTime, milliseconds : Int64) -> DateTime {
+pub fn DateTime::inc_milliseconds(self : DateTime, milliseconds : Int64) -> DateTime {
   let ts = self.timestamp()
   ts.addmseconds(milliseconds)
   ts.datetime()
 }
 
 ///|
-pub fn inc_seconds(self : DateTime, seconds : Int64) -> DateTime {
+pub fn DateTime::inc_seconds(self : DateTime, seconds : Int64) -> DateTime {
   self.inc_milliseconds(seconds * 1000)
 }
 
 ///|
-pub fn inc_minutes(self : DateTime, minutes : Int64) -> DateTime {
+pub fn DateTime::inc_minutes(self : DateTime, minutes : Int64) -> DateTime {
   self.inc_milliseconds(minutes * 60_000)
 }
 
 ///|
-pub fn inc_hour(self : DateTime, hour : Int64) -> DateTime {
+pub fn DateTime::inc_hour(self : DateTime, hour : Int64) -> DateTime {
   self.inc_milliseconds(hour * 3600_000)
 }
 
 ///|
-pub fn milliseconds(self : DateTime) -> Int64 {
+pub fn DateTime::milliseconds(self : DateTime) -> Int64 {
   self.timestamp().mseconds()
 }
 
 ///|
-pub fn unix_millseconds(self : DateTime) -> Int64 {
+pub fn DateTime::unix_millseconds(self : DateTime) -> Int64 {
   ((self._ - UnixDateDeltaDays.to_double()) * MSecondsPerDay.to_double()).to_int64()
 }
 
 ///|
-pub fn unix_seconds(self : DateTime) -> Int64 {
+pub fn DateTime::unix_seconds(self : DateTime) -> Int64 {
   ((self._ - UnixDateDeltaDays.to_double()) * 86400).to_int64()
 }
 
@@ -280,7 +280,7 @@ pub impl Show for DateTime with output(self, l : &Logger) -> Unit {
 }
 
 ///|
-pub fn decode_date(self : DateTime) -> SystemDate {
+pub fn DateTime::decode_date(self : DateTime) -> SystemDate {
   let mut date = self._.to_int() + DateDelta
   if date < 0 {
     { year: 0, month: 0, day: 0, dayofweek: 0 }
@@ -328,7 +328,7 @@ pub fn decode_date(self : DateTime) -> SystemDate {
 }
 
 ///|
-pub fn decode_time(self : DateTime) -> SystemTime {
+pub fn DateTime::decode_time(self : DateTime) -> SystemTime {
   let time = ((self._ - self._.to_int().to_double()) *
   MSecondsPerDay.to_double()).to_int()
   let minCount = time / MSecondsPerMinute
@@ -342,7 +342,7 @@ pub fn decode_time(self : DateTime) -> SystemTime {
 }
 
 ///|
-pub fn decode(self : DateTime) -> SystemDateTime {
+pub fn DateTime::decode(self : DateTime) -> SystemDateTime {
   { date: self.decode_date(), time: self.decode_time() }
 }
 
@@ -447,13 +447,13 @@ pub fn DateTime::new(
 
 //difference in days
 ///|
-pub fn op_sub(self : DateTime, other : DateTime) -> Double {
+pub impl Sub for DateTime with  op_sub(self : DateTime, other : DateTime) -> DateTime {
   self._ - other._
 }
 
 //number of days between time intervals
 ///|
-pub fn day_span(self : DateTime, then : DateTime) -> Double {
+pub fn DateTime::day_span(self : DateTime, then : DateTime) -> Double {
   if self._ < then._ {
     then._ - self._
   } else {
@@ -462,22 +462,22 @@ pub fn day_span(self : DateTime, then : DateTime) -> Double {
 }
 
 ///|
-pub fn year_span(self : DateTime, then : DateTime) -> Double {
+pub fn DateTime::year_span(self : DateTime, then : DateTime) -> Double {
   self.day_span(then) / ApproxDaysPerYear
 }
 
 ///|
-pub fn month_span(self : DateTime, then : DateTime) -> Double {
+pub fn DateTime::month_span(self : DateTime, then : DateTime) -> Double {
   self.day_span(then) / ApproxDaysPerMonth
 }
 
 ///|
-pub fn week_span(self : DateTime, then : DateTime) -> Double {
+pub fn DateTime::week_span(self : DateTime, then : DateTime) -> Double {
   self.day_span(then) / 7
 }
 
 ///|
-pub fn hours_between(self : DateTime, then : DateTime) -> Int64 {
+pub fn DateTime::hours_between(self : DateTime, then : DateTime) -> Int64 {
   let delta = self.milliseconds() - then.milliseconds()
   if delta < 0 {
     -delta / 3600_000
@@ -487,14 +487,14 @@ pub fn hours_between(self : DateTime, then : DateTime) -> Int64 {
 }
 
 ///|
-pub fn minutes_between(self : DateTime, then : DateTime) -> Int64 {
+pub fn DateTime::minutes_between(self : DateTime, then : DateTime) -> Int64 {
   let delta = self.milliseconds() - then.milliseconds()
   let delta_abs = if delta < 0 { -delta } else { delta }
   delta_abs / 60_000
 }
 
 ///|
-pub fn seconds_between(self : DateTime, then : DateTime) -> Int64 {
+pub fn DateTime::seconds_between(self : DateTime, then : DateTime) -> Int64 {
   let delta = self.milliseconds() - then.milliseconds()
   if delta < 0 {
     -delta / 1000
@@ -504,7 +504,7 @@ pub fn seconds_between(self : DateTime, then : DateTime) -> Int64 {
 }
 
 ///|
-pub fn milliseconds_between(self : DateTime, then : DateTime) -> Int64 {
+pub fn DateTime::milliseconds_between(self : DateTime, then : DateTime) -> Int64 {
   let delta = self.milliseconds() - then.milliseconds()
   if delta < 0 {
     -delta
@@ -514,7 +514,7 @@ pub fn milliseconds_between(self : DateTime, then : DateTime) -> Int64 {
 }
 
 ///|
-pub fn years_between(self : DateTime, then : DateTime) -> Int {
+pub fn DateTime::years_between(self : DateTime, then : DateTime) -> Int {
   let delta = self.milliseconds() - then.milliseconds()
   if delta < 0 {
     (-delta / MSecondsPerYear).to_int()
@@ -524,7 +524,7 @@ pub fn years_between(self : DateTime, then : DateTime) -> Int {
 }
 
 ///|
-pub fn months_between(self : DateTime, then : DateTime) -> Int {
+pub fn DateTime::months_between(self : DateTime, then : DateTime) -> Int {
   let delta = self.milliseconds() - then.milliseconds()
   if delta < 0 {
     (-delta / MSecondsPerMonth).to_int()
@@ -534,7 +534,7 @@ pub fn months_between(self : DateTime, then : DateTime) -> Int {
 }
 
 ///|
-pub fn days_between(self : DateTime, then : DateTime) -> Int {
+pub fn DateTime::days_between(self : DateTime, then : DateTime) -> Int {
   let delta = self.milliseconds() - then.milliseconds()
   if delta < 0 {
     (-delta / MSecondsPerDay).to_int()
@@ -544,7 +544,7 @@ pub fn days_between(self : DateTime, then : DateTime) -> Int {
 }
 
 ///|
-pub fn inc_month(self : DateTime, monthNum : Int) -> DateTime {
+pub fn DateTime::inc_month(self : DateTime, monthNum : Int) -> DateTime {
   let date = self.decode_date()
   let time = self._ - self._.to_int().to_double()
   let (date, dayTable) = date.inc_month(monthNum)
@@ -557,31 +557,31 @@ pub fn inc_month(self : DateTime, monthNum : Int) -> DateTime {
 }
 
 ///|
-pub fn inc_year(self : DateTime, yearNum : Int) -> DateTime {
+pub fn DateTime::inc_year(self : DateTime, yearNum : Int) -> DateTime {
   self.inc_month(yearNum * 12)
 }
 
 ///|
-pub fn inc_day(self : DateTime, days : Int) -> DateTime {
+pub fn DateTime::inc_day(self : DateTime, days : Int) -> DateTime {
   self.inc_milliseconds(MSecondsPerDay * days.to_int64())
 }
 
 ///|
-fn index_of_char(str : String, ch : Char, from~ : Int = 0) -> Int {
-  let l = str.length()
-  for i in from..<l {
-    if str.get(i) == ch {
+fn index_of_char(str : String, ch : Int, from~ : Int = 0) -> Int {
+  let l = str.length()  
+  for i in from..<l {    
+    if str.charcode_at(i) == ch {
       return i
     }
-  }
+  }  
   -1
 }
 
 ///|
-fn index_of_char_ex(str : String, f : (Char) -> Bool, from~ : Int = 0) -> Int {
+fn index_of_char_ex(str : String, f : (Int) -> Bool, from~ : Int = 0) -> Int {
   let l = str.length()
   for i in from..<l {
-    if f(str.get(i)) {
+    if f(str.charcode_at(i)) {
       return i
     }
   }
@@ -596,7 +596,7 @@ fn index_of_char_ex(str : String, f : (Char) -> Bool, from~ : Int = 0) -> Int {
 /// YY-MM-DD
 /// HH:MM:SS.zzz(+hh:mm)
 /// HH:MM:SS(-hh:mm)
-pub fn parse_datetime(str : String) -> DateTime!@strconv.StrConvError {
+pub fn DateTime::parse_datetime(str : String) -> DateTime!@strconv.StrConvError {
   let mut year = 0
   let mut month = 0
   let mut day = 0
@@ -804,7 +804,7 @@ pub fn parse_datetime(str : String) -> DateTime!@strconv.StrConvError {
   }
 
   // 解析时区部分
-  let sign = if str.get(timezone_index) == '+' { 1 } else { -1 }
+  let sign = if str.charcode_at(timezone_index) == '+' { 1 } else { -1 }
   let timezone_start = timezone_index + 1
   let next = index_of_char(str, ':', from=timezone_start)
   if next == -1 {
@@ -833,11 +833,11 @@ pub fn parse_datetime(str : String) -> DateTime!@strconv.StrConvError {
 
 ///|
 pub impl @strconv.FromStr for DateTime with from_string(str) {
-  parse_datetime!(str)
+  DateTime::parse_datetime!(str)
 }
 
 test "parse datetime" {
-  match parse_datetime?("2024-12-03 12:32:33.33+19:00") {
+  match DateTime::parse_datetime?("2024-12-03 12:32:33.33+19:00") {
     Ok(v) => println(v)
     _ => println("err")
   }
@@ -846,7 +846,7 @@ test "parse datetime" {
 test "new datetime" {
   let t = DateTime(0)
   println(t)
-  let date1 = new(2024, 11, 18, 18, 23, 43, 199).unwrap()
+  let date1 = DateTime::new(2024, 11, 18, 18, 23, 43, 199).unwrap()
   let date = date1.decode_date()
   let week = [
     "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
@@ -857,7 +857,7 @@ test "new datetime" {
   assert_eq!(Show::to_string(date1), "2024-11-18 18:23:43.199")
   assert_eq!(Show::to_string(date1.inc_month(-13)), "2023-10-18 18:23:43.199")
   assert_eq!(Show::to_string(date1.inc_hour(24)), "2024-11-19 18:23:43.199")
-  let date2 = from_unix_seconds(1731934794)
+  let date2 = DateTime::from_unix_seconds(1731934794)
   assert_eq!(Show::to_string(date2), "2024-11-18 12:59:54.0")
   println(date2.unix_seconds())
 }
